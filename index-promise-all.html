@@ -1,0 +1,208 @@
+<html>
+    <head>
+        <title>Acme-API-Processor</title>
+    </head>
+    <body>
+    </body>
+    <script>
+        const grabCompanies = () => new Promise((res, rej) => {
+            return window.fetch('https://acme-users-api-rev.herokuapp.com/api/companies')
+            //returned promise goes into then
+            .then(response => response.json())
+            .then(jsonData => res(jsonData))
+            .catch(e => rej(e));
+        })
+
+        const grabProducts = () => new Promise((res, rej) => {
+            return window.fetch('https://acme-users-api-rev.herokuapp.com/api/products')
+            .then(response => response.json())
+            .then(jsonData => res(jsonData))
+            .catch(e => rej(e));
+        })
+
+        const grabOfferings = () => new Promise((res, rej) => {
+            return window.fetch('https://acme-users-api-rev.herokuapp.com/api/offerings')
+            .then(response => response.json())
+            .then(jsonData => res(jsonData))
+            .catch(e => rej(e));
+        })
+
+        const companies = grabCompanies();
+        const products = grabProducts();
+        const offerings = grabOfferings();
+
+        Promise.all([companies, products, offerings]).then(function(values){
+            const companiesList = values[0];
+            const productsList = values[1];
+            const offeringsList = values[2];
+
+            //return products within a price range
+            // const range = {min:1, max:15}
+            // const productsInPriceRange = findProductsInPriceRange(productsList, range);
+            // console.log(productsInPriceRange);
+
+            //return object where key is first letter of company name
+            //value for each key is the array of those companies   
+            // const groupedCompaniesByLetter = groupCompaniesByLetter(companiesList);
+            // console.log(groupedCompaniesByLetter);
+
+            //return object where key is a state
+            //value for each key is the array of those companies in that state
+            // const groupedCompaniesByState = groupCompaniesByState(companiesList);
+            // console.log(groupedCompaniesByState);
+
+            //return an array of the offerings with each offering having a company and product
+            // const processedOfferings = processOfferings({companiesList, productsList, offeringsList});
+            // console.log(processedOfferings);
+
+            //return the companies that have n or more offerings
+            // const n = 3;
+            // const threeOrMoreOfferings = companiesByNumberOfOfferings(companiesList, offeringsList, n);
+            // console.log(threeOrMoreOfferings);
+
+            //returns array of products where each product has the average price of its' offerings
+            // const processedProducts = processProducts({productsList, offeringsList});
+            // console.log(processedProducts);
+
+        })
+
+        function findProductsInPriceRange(products, range){
+            let output = [];
+            for(let currentProduct in products){
+                const price = products[currentProduct]['suggestedPrice'];
+                if(price > range['min'] && price < range['max']){
+                    output.push(products[currentProduct]['name']);
+                }
+            }
+            return output;
+        }
+
+        function groupCompaniesByLetter(companies){
+            let groupedCompanies = {};
+            for(let currentCompany in companies){
+                const companyName = companies[currentCompany]['name'];
+                const firstLetter = companyName[0];
+
+                if(!groupedCompanies.hasOwnProperty(firstLetter)){
+                    groupedCompanies[firstLetter] = [];
+                }
+
+                groupedCompanies[firstLetter].push(companyName);
+            }
+            return groupedCompanies;
+        }
+
+        function groupCompaniesByState(companies){
+            let groupedCompanies = {};
+            for(let currentCompany in companies){
+                const companyName = companies[currentCompany]['name'];
+                const state = companies[currentCompany]['state'];
+
+                if(!groupedCompanies.hasOwnProperty(state)){
+                    groupedCompanies[state] = [];
+                }
+
+                groupedCompanies[state].push(companyName);
+            }
+            return groupedCompanies;
+        }
+
+        function processOfferings(arg){
+            const companyList = arg.companiesList;
+            const productList = arg.productsList;
+            const offeringList = arg.offeringsList;
+
+            let offeringArr = [];
+            for(let currentOffering in offeringList){
+                let currentOfferingSet = {};
+                
+                const companyId = offeringList[currentOffering]['companyId'];
+                const productId = offeringList[currentOffering]['productId'];
+                for(let currentCompany in companyList){
+                    if(companyList[currentCompany]['id'] === companyId){
+                        currentOfferingSet['Company Name'] = companyList[currentCompany]['name'];
+                    }
+                }
+                for(let currentProduct in productList){
+                    if(productList[currentProduct]['id'] === productId){
+                        currentOfferingSet['Product'] = productList[currentProduct]['name'];
+                    }
+                }
+                offeringArr.push(currentOfferingSet);
+            }
+            return offeringArr;
+        }
+
+        function companiesByNumberOfOfferings(companies, offerings, n){
+            //find the number of offerings for each company
+            let groupedCompanies = {};
+            for(let currentOffering in offerings){
+
+                const companyId = offerings[currentOffering]['companyId'];
+                if(!groupedCompanies.hasOwnProperty(companyId)){
+                    groupedCompanies[companyId] = 1;
+                }else{
+                    groupedCompanies[companyId] ++;
+                }
+                
+            }
+            //filter the groupedCompany and save the filtered company name into a new array
+            let filteredCompanyId = [];
+            for(let currentCompanyId in groupedCompanies){
+                if(groupedCompanies[currentCompanyId] > n-1){
+                    filteredCompanyId.push(currentCompanyId)
+                }
+            }
+            //find the company name for each company
+            return filteredCompanyId.map(currentId => {
+                for(let currentCompany in companies){
+                    if(companies[currentCompany]['id'] === currentId){
+                        currentId = companies[currentCompany]['name'];
+                    }
+                }
+                
+                return currentId;
+            })
+        }
+
+        function processProducts(arg){
+            const offeringItems = arg['offeringsList'];
+            const productItems = arg['productsList'];
+            //sum up prices and count number of offerings for each product
+            let groupedProducts = {};
+            for(let currentOffering in offeringItems){
+
+                const productId = offeringItems[currentOffering]['productId'];
+                const price = offeringItems[currentOffering]['price'];
+                if(!groupedProducts.hasOwnProperty(productId)){
+                    groupedProducts[productId] = {};
+                    groupedProducts[productId]['sum'] = 0;
+                    groupedProducts[productId]['count'] = 0;
+                }
+                groupedProducts[productId]['sum'] += price;
+                groupedProducts[productId]['count'] ++;
+            }
+            
+            //convert product Id to product name and store it and its average price in an array
+            let processedProducts = [];
+            for(let currentItem in groupedProducts){
+                
+                const averagePrice = Math.round(groupedProducts[currentItem]['sum']/groupedProducts[currentItem]['count'] * 100) / 100;
+                groupedProducts[currentItem] = averagePrice;
+
+                let currentProductSet = {};
+                for(let currentProduct in productItems){
+                    if(productItems[currentProduct]['id'] === currentItem){
+                        currentProductSet['Product Name'] = productItems[currentProduct]['name'];
+                    }
+                }
+                currentProductSet['Average Price'] = averagePrice;
+                processedProducts.push(currentProductSet);
+            }
+
+            return processedProducts;
+        }
+
+
+    </script>
+</html>
